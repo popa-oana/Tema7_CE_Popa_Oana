@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <title>Products</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <h1>Products</h1>
+
+    <div class="card form-row">
+        <div class="half-card">
+            <h2>Add category</h2>
+            <input id="cat-name" placeholder="Category name">
+            <button onclick="addCategory()">Add</button>
+        </div>
+
+        <div class="half-card">
+            <h2>Add provider</h2>
+            <input id="prov-name" placeholder="Provider name">
+            <button onclick="addProvider()">Add</button>
+        </div>
+    </div>
+
+    <div class="card lists-row">
+        <div class="half-card">
+            <h2>Categories List</h2>
+            <table id="category-list">
+                <thead>
+                <tr><th>#</th><th>Name</th><th>Action</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div class="half-card">
+            <h2>Providers List</h2>
+            <table id="provider-list">
+                <thead>
+                <tr><th>#</th><th>Name</th><th>Action</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Add product</h2>
+        <input id="prod-name" placeholder="Product name">
+        <input id="prod-price" type="number" step="0.01" placeholder="Price">
+        <select id="prod-category">
+            <option value="">-- Select category --</option>
+        </select>
+        <select id="prod-provider">
+            <option value="">-- Select provider --</option>
+        </select>
+        <button onclick="addProduct()">Add</button>
+    </div>
+
+    <div class="card">
+        <h2>Products List</h2>
+        <table id="product-list">
+            <thead>
+            <tr><th>#</th><th>Name</th><th>Category</th><th>Provider</th><th>Price</th><th>Action</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+
+        <div id="edit-form" class="card" style="display:none; margin-top:20px;">
+            <h3>Edit Product</h3>
+            <input id="edit-name" placeholder="Product name">
+            <input id="edit-price" type="number" step="0.01" placeholder="Price">
+            <select id="edit-category">
+                <option value="">-- Select category --</option>
+            </select>
+            <select id="edit-provider">
+                <option value="">-- Select provider --</option>
+            </select>
+            <button onclick="saveEditedProduct()">Save</button>
+            <button onclick="cancelEdit()">Cancel</button>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    async function loadCategories() {
+        try {
+            const res = await fetch('/api/categories');
+            const categories = await res.json();
+
+            const select = document.getElementById('prod-category');
+            const tbody = document.querySelector('#category-list tbody');
+
+            select.innerHTML = '<option value="">-- Select category --</option>';
+            tbody.innerHTML = '';
+
+            categories.forEach((c, i) => {
+                const option = document.createElement('option');
+                option.value = c.id;
+                option.textContent = c.name;
+                select.appendChild(option);
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                <td>${i+1}</td>
+                <td>${c.name}</td>
+                <td><button onclick="deleteCategory(${c.id})">Delete</button></td>
+            `;
+                tbody.appendChild(tr);
+            });
+        } catch(err) {
+            console.error('loadCategories error', err);
+        }
+    }
+
+    async function loadProviders() {
+        try {
+            const res = await fetch('/api/providers');
+            const providers = await res.json();
+
+            const select = document.getElementById('prod-provider');
+            const tbody = document.querySelector('#provider-list tbody');
+
+            select.innerHTML = '<option value="">-- Select provider --</option>';
+            tbody.innerHTML = '';
+
+            providers.forEach((p, i) => {
+                const option = document.createElement('option');
+                option.value = p.id;
+                option.textContent = p.name;
+                select.appendChild(option);
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                <td>${i+1}</td>
+                <td>${p.name}</td>
+                <td><button onclick="deleteProvider(${p.id})">Delete</button></td>
+            `;
+                tbody.appendChild(tr);
+            });
+        } catch(err) {
+            console.error('loadProviders error', err);
+        }
+    }
+
+    async function loadProducts() {
+        try {
+            const res = await fetch('/api/products');
+            const products = await res.json();
+
+            const tbody = document.querySelector('#product-list tbody');
+            tbody.innerHTML = '';
+
+            products.forEach((p, i) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                <td>${i+1}</td>
+                <td><a href="product.html?id=${p.id}">${p.name}</a></td>
+                <td>${p.category ? p.category.name : 'No category'}</td>
+                <td>${p.provider ? p.provider.name : 'No provider'}</td>
+                <td>${p.price.toFixed(2)} RON</td>
+                <td>
+                    <button onclick="openEditForm(${p.id})">Edit</button>
+                    <button onclick="deleteProduct(${p.id})">Delete</button>
+                </td>
+            `;
+                tbody.appendChild(tr);
+            });
+
+        } catch(err) {
+            console.error('loadProducts error', err);
+        }
+    }
+
+    async function addCategory() {
+        const name = document.getElementById('cat-name').value.trim();
+        if(!name) return alert('Insert category name!');
+        await fetch('/api/categories', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name})
+        });
+        document.getElementById('cat-name').value = '';
+        loadCategories();
+    }
+
+    async function addProvider() {
+        const name = document.getElementById('prov-name').value.trim();
+        if(!name) return alert('Insert provider name!');
+        await fetch('/api/providers', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({name})
+        });
+        document.getElementById('prov-name').value = '';
+        loadProviders();
+    }
+
+    async function addProduct() {
+        const name = document.getElementById('prod-name').value.trim();
+        const price = parseFloat(document.getElementById('prod-price').value);
+        const categoryId = document.getElementById('prod-category').value;
+        const providerId = document.getElementById('prod-provider').value;
+
+        if(!name || isNaN(price)) return alert('Insert name and price!');
+        if(!categoryId) return alert('Select category!');
+        if(!providerId) return alert('Select provider!');
+
+        await fetch('/api/products', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                name,
+                price,
+                category: {id: categoryId},
+                provider: {id: providerId}
+            })
+        });
+
+        document.getElementById('prod-name').value = '';
+        document.getElementById('prod-price').value = '';
+        loadProducts();
+    }
+
+    async function deleteCategory(id) {
+        await fetch(`/api/categories/${id}`, {method:'DELETE'});
+        loadCategories();
+        loadProducts();
+    }
+
+    async function deleteProvider(id) {
+        await fetch(`/api/providers/${id}`, {method:'DELETE'});
+        loadProviders();
+        loadProducts();
+    }
+
+    async function deleteProduct(id) {
+        await fetch(`/api/products/${id}`, {method:'DELETE'});
+        loadProducts();
+    }
+
+    let editingProductId = null;
+
+    async function openEditForm(id) {
+        try {
+            const res = await fetch(`/api/products/${id}`);
+            if (!res.ok) throw new Error('Product not found');
+            const p = await res.json();
+
+            editingProductId = p.id;
+
+            document.getElementById('edit-name').value = p.name;
+            document.getElementById('edit-price').value = p.price;
+
+            await populateEditDropdowns(p);
+
+            document.getElementById('edit-form').style.display = 'block';
+        } catch (err) {
+            console.error('openEditForm error', err);
+        }
+    }
+
+    async function populateEditDropdowns(product) {
+        const catSelect = document.getElementById('edit-category');
+        const provSelect = document.getElementById('edit-provider');
+
+        const cats = await fetch('/api/categories').then(res => res.json());
+        const provs = await fetch('/api/providers').then(res => res.json());
+
+        catSelect.innerHTML = '<option value="">-- Select category --</option>';
+        cats.forEach(c => {
+            const option = document.createElement('option');
+            option.value = c.id;
+            option.textContent = c.name;
+            if (product.category && product.category.id === c.id) {
+                option.selected = true;
+            }
+            catSelect.appendChild(option);
+        });
+
+        provSelect.innerHTML = '<option value="">-- Select provider --</option>';
+        provs.forEach(p => {
+            const option = document.createElement('option');
+            option.value = p.id;
+            option.textContent = p.name;
+            if (product.provider && product.provider.id === p.id) {
+                option.selected = true;
+            }
+            provSelect.appendChild(option);
+        });
+    }
+
+    async function saveEditedProduct() {
+        const name = document.getElementById('edit-name').value.trim();
+        const price = parseFloat(document.getElementById('edit-price').value);
+        const categoryId = document.getElementById('edit-category').value;
+        const providerId = document.getElementById('edit-provider').value;
+
+        if (!name || isNaN(price)) return alert('Insert name and price!');
+        if (!categoryId) return alert('Select category!');
+        if (!providerId) return alert('Select provider!');
+
+        await fetch(`/api/products/${editingProductId}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                name,
+                price,
+                category: {id: categoryId},
+                provider: {id: providerId}
+            })
+        });
+
+        document.getElementById('edit-form').style.display = 'none';
+        editingProductId = null;
+        loadProducts();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadCategories();
+        loadProducts();
+        loadProviders();
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <title>Product</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="container">
+    <h1>Product details</h1>
+    <a href="index.html">Back to products list</a>
+
+    <div id="product-details" class="card"></div>
+
+    <div class="card">
+        <h2>Add review</h2>
+        <input id="review-author" placeholder="Author">
+        <input id="review-rating" type="number" min="1" max="5" placeholder="Rating (1-5)">
+        <input id="review-comment" placeholder="Your comment (optional)" rows="4"></input>
+        <button onclick="addReview()">Add review</button>
+    </div>
+
+    <div class="card">
+        <h2>Reviews</h2>
+        <div id="review-list"></div>
+    </div>
+</div>
+
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const productId = urlParams.get('id');
+
+    async function loadProduct() {
+        try {
+            const res = await fetch(`/api/products/${productId}`);
+            const p = await res.json();
+
+            const div = document.getElementById('product-details');
+            div.innerHTML = `
+      <h2>${p.name}</h2>
+      <p><strong>Category:</strong> ${p.category ? p.category.name : 'No category'}</p>
+      <p><strong>Provider:</strong> ${p.provider ? p.provider.name : 'No provider'}</p>
+      <p><strong>Price:</strong> ${p.price.toFixed(2)} RON</p>
+    `;
+        } catch (err) {
+            console.error('loadProduct error', err);
+        }
+    }
+
+    async function loadReviews() {
+        try {
+            const res = await fetch(`/api/reviews/product/${productId}`);
+            const reviews = await res.json();
+
+            const list = document.getElementById('review-list');
+            list.innerHTML = '';
+
+            if (reviews.length === 0) {
+                list.innerHTML = '<em>No reviews yet.</em>';
+                return;
+            }
+
+            reviews.forEach(r => {
+                const div = document.createElement('div');
+                div.className = 'review';
+                div.innerHTML = `
+        <p><strong>${r.author}</strong> — ⭐${r.rating}</p>
+        ${r.comment ? `<p>${r.comment}</p>` : ''}
+      `;
+                list.appendChild(div);
+            });
+        } catch (err) {
+            console.error('loadReviews error', err);
+        }
+    }
+
+    async function addReview() {
+        const author = document.getElementById('review-author').value.trim();
+        const rating = parseInt(document.getElementById('review-rating').value);
+        const comment = document.getElementById('review-comment').value.trim();
+
+        if (!author || isNaN(rating) || rating < 1 || rating > 5) {
+            alert('Inset name and rating.');
+            return;
+        }
+
+        await fetch('/api/reviews', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                author,
+                rating,
+                comment: comment || null,
+                product: { id: productId }
+            })
+        });
+
+        document.getElementById('review-author').value = '';
+        document.getElementById('review-rating').value = '';
+        document.getElementById('review-comment').value = '';
+        loadReviews();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadProduct();
+        loadReviews();
+    });
+</script>
+</body>
+</html>
